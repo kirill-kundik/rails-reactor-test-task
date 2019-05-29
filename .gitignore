@@ -106,5 +106,5 @@ venv.bak/
 .idea/
 .idea
 
-dev-dataset
-dev-dataset/
+dev_dataset
+dev_dataset/

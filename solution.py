@@ -1,14 +1,16 @@
 import argparse
 import glob
-import hashlib
 import os
+# import time
+
+from modified import find_modified
 
 
-# import numpy as np
-# from PIL import Image
-
-
-def parse_args():
+def parse_args() -> str:
+    """
+    parsing cli parameters to find required one 'path'
+    :return: path value from args
+    """
     parser = argparse.ArgumentParser(description='First test task on images similarity.')
     parser.add_argument('--path', help='PATH', type=str, required=True)
     args = parser.parse_args()
@@ -17,21 +19,15 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    path = parse_args()
+    path = parse_args()  # getting path from cli
 
-    all_files = glob.glob(os.path.join(path, '*.jpg'))
+    all_files = glob.glob(os.path.join(path, '*.*'))
+    # curr = time.time()
 
-    duplicates = dict()
+    # calling function to calculate duplicate and modified images
+    modified = find_modified(all_files)
 
-    for infile in all_files:
-        with open(infile, 'rb') as input_file:
-            file_hash = hashlib.sha3_256(input_file.read()).hexdigest()
+    # printing results
+    print('\n'.join([' '.join([os.path.basename(y) for y in x]) for x in modified]))
 
-            if file_hash not in duplicates:
-                duplicates[file_hash] = [os.path.basename(infile)]
-            else:
-                duplicates[file_hash].append(os.path.basename(infile))
-
-    for k, v in duplicates.items():
-        if len(v) > 1:
-            print(' '.join(v))
+    # print("{:.2f}".format(time.time() - curr) + ' seconds')

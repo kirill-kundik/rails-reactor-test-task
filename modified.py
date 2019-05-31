@@ -57,11 +57,11 @@ def resize(image, height=30, width=30):
     :return: tuple of np array rows and cols for resize image
     """
     image = Image.fromarray(image)
-    row_res = image.resize((width, height), Image.CUBIC)
-    row_res = np.asarray(row_res, dtype="int32").flatten()
-    col_res = image.resize((width, height), Image.CUBIC)
-    col_res = np.asarray(col_res, dtype='int32').flatten('F')
-    return row_res, col_res
+    image = image.resize((width, height), Image.CUBIC)
+    image = np.asarray(image, dtype='int32')
+    row_res = image.flatten()
+    col_res = image.flatten('F')
+    return row_res, col_res, image
 
 
 def intensity_diff(row_res, col_res):
@@ -96,10 +96,10 @@ def difference_score(image, height=30, width=30):
     :return: image 'blueprint'
     """
     gray = img_gray(image)
-    row_res, col_res = resize(gray, height, width)
+    row_res, col_res, image_arr = resize(gray, height, width)
     difference = intensity_diff(row_res, col_res)
 
-    return difference
+    return difference, image_arr
 
 
 def difference_score_dict_hash(image_list):
@@ -147,14 +147,31 @@ def difference_score_dict(image_list):
     # count_all = len(image_list)
     for c, image in enumerate(image_list):
         # print('Processing image #' + str(c + 1) + ' out of ' + str(count_all))
-        ds = difference_score(image)
+        ds, image_arr = difference_score(image)
 
         if image not in ds_dict:
-            ds_dict[image] = ds
+            ds_dict[image] = (ds, image_arr)
         else:
             duplicates.append((image, ds_dict[image]))
 
     return duplicates, ds_dict
+
+
+def mse(image, image2):
+    """
+    the 'Mean Squared Error' between the two images is the
+    sum of the squared difference between the two images;
+    NOTE: the two images must have the same dimension
+    :param image:
+    :param image2:
+    :return:
+    """
+    err = np.sum((image.astype("float") - image2.astype("float")) ** 2)
+    err /= float(image.shape[0] * image.shape[1])
+
+    # return the MSE, the lower the error, the more "similar"
+    # the two images are
+    return err
 
 
 def find_modified(all_files):
@@ -171,6 +188,17 @@ def find_modified(all_files):
     modified, ds_dict = difference_score_dict(image_files)
 
     for k1, k2 in itertools.combinations(ds_dict, 2):
-        if hamming_distance(ds_dict[k1], ds_dict[k2]) < .10:
+        hamming_dis = hamming_distance(ds_dict[k1][0], ds_dict[k2][0])
+        mse_calc = mse(ds_dict[k1][1], ds_dict[k2][1])
+
+        if hamming_dis < .05:
             modified.append((k1, k2))
+        elif hamming_dis < .35 and mse_calc < 2000:
+            # parameters were picked up by myself (because 2000 is working good
+            # with this dataset) and I think that MSE needs to be less than 1500
+            # or maybe 1300 and hamming distance lower than .25-.30 (but maybe I am wrong)
+            modified.append((k1, k2))
+        # print(k1, k2)
+        # print('DISTANCE: ' + str(hamming_dis))
+        # print('MSE: ' + str(mse_calc))
     return modified
